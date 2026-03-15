@@ -22,10 +22,10 @@ import androidx.room.PrimaryKey
             onDelete = ForeignKey.RESTRICT // No permite borrar un estado si hay reservas asociadas
         )
     ],
-    // Mantenemos el índice único para simular el comportamiento de llave compuesta
+    // llave compuesta
     indices = [
         Index(value = ["id", "id_cliente"], unique = true),
-        Index(value = ["id_estado"]) // Recomendado para mejorar rendimiento en llaves foráneas
+        Index(value = ["id_estado"])
     ]
 )
 data class Reserva(

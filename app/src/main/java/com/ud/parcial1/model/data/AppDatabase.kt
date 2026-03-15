@@ -38,14 +38,11 @@ abstract class AppDatabase : RoomDatabase() {
         }
     }
 
-    private class AppDatabaseCallback(
-        private val scope: CoroutineScope
-    ) : RoomDatabase.Callback() {
+    private class AppDatabaseCallback(private val scope: CoroutineScope) : RoomDatabase.Callback() {
 
         override fun onCreate(db: SupportSQLiteDatabase) {
             super.onCreate(db)
-            INSTANCE?.let { database ->
-                scope.launch(Dispatchers.IO) {
+            INSTANCE?.let { database -> scope.launch(Dispatchers.IO) {
                     populateDatabase(database.estadoDao())
                 }
             }
