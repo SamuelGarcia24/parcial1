@@ -7,6 +7,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -18,7 +19,12 @@ import com.ud.parcial1.model.data.ReservaWithDetails
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ReservaScreen(viewModel: ReservaViewModel) {
+fun ReservaScreen(
+    viewModel: ReservaViewModel,
+    onNuevaReserva: () -> Unit,
+    onVerDetalle: (ReservaWithDetails) -> Unit,
+    onEditarReserva: (ReservaWithDetails) -> Unit
+) {
     val reservas by viewModel.reservas.collectAsState()
     var searchText by remember { mutableStateOf("") }
 
@@ -27,7 +33,7 @@ fun ReservaScreen(viewModel: ReservaViewModel) {
             TopAppBar(title = { Text("Reservas Bowling") })
         },
         floatingActionButton = {
-            FloatingActionButton(onClick = { /* TODO: Abrir formulario */ }) {
+            FloatingActionButton(onClick = onNuevaReserva) {
                 Icon(Icons.Default.Add, contentDescription = "Nueva Reserva")
             }
         }
@@ -36,7 +42,7 @@ fun ReservaScreen(viewModel: ReservaViewModel) {
             // Barra de búsqueda (Regla 2)
             OutlinedTextField(
                 value = searchText,
-                onValueChange = { 
+                onValueChange = {
                     searchText = it
                     viewModel.buscarPorNombre(it)
                 },
@@ -50,8 +56,9 @@ fun ReservaScreen(viewModel: ReservaViewModel) {
                 items(reservas) { item ->
                     ReservaItem(
                         item = item,
+                        onVerDetalle = { onVerDetalle(item) },
                         onDelete = { viewModel.eliminarReserva(item.reserva) },
-                        onEdit = { /* TODO: Implementar edición */ }
+                        onEdit = { onEditarReserva(item) }
                     )
                 }
             }
@@ -62,6 +69,7 @@ fun ReservaScreen(viewModel: ReservaViewModel) {
 @Composable
 fun ReservaItem(
     item: ReservaWithDetails,
+    onVerDetalle: () -> Unit,
     onDelete: () -> Unit,
     onEdit: () -> Unit
 ) {
@@ -78,7 +86,7 @@ fun ReservaItem(
                 // Visualización del estado (Regla 3)
                 StatusBadge(status = item.estado.descripcion)
             }
-            
+
             Spacer(modifier = Modifier.height(8.dp))
             Text(text = "Pista: ${item.reserva.numeroPista} | Fecha: ${item.reserva.fecha}")
             Text(text = "Hora: ${item.reserva.hora}")
@@ -87,6 +95,18 @@ fun ReservaItem(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.End
             ) {
+                // Botón VER DETALLE (nuevo)
+                Button(
+                    onClick = onVerDetalle,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFF2196F3)
+                    ),
+                    modifier = Modifier.padding(end = 8.dp)
+                ) {
+                    Icon(Icons.Default.Info, contentDescription = "Detalle", tint = Color.White)
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("Detalle", color = Color.White)
+                }
                 IconButton(onClick = onEdit) {
                     Icon(Icons.Default.Edit, contentDescription = "Editar", tint = Color.Blue)
                 }
