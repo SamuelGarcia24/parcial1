@@ -1,4 +1,4 @@
-package com.ud.parcial1.ui
+package com.ud.parcial1.ui.screens
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -11,11 +11,11 @@ import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.ud.parcial1.model.data.ReservaWithDetails
+import com.ud.parcial1.ui.ReservaViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
