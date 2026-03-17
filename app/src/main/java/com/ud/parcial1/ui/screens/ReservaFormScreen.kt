@@ -1,8 +1,10 @@
 package com.ud.parcial1.ui.screens
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
@@ -23,8 +25,6 @@ import androidx.compose.ui.unit.sp
 import com.ud.parcial1.model.data.Cliente
 import com.ud.parcial1.model.data.ReservaWithDetails
 import com.ud.parcial1.ui.ReservaViewModel
-import androidx.compose.foundation.background
-import androidx.compose.foundation.shape.CircleShape
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -44,7 +44,6 @@ fun ReservaFormScreen(
     var hora by remember { mutableStateOf("") }
     var numeroPista by remember { mutableStateOf("1") }
     var cantidadJugadores by remember { mutableStateOf("4") }
-    // 🆕 estado para el estado de la reserva (solo en edición)
     var estadoSeleccionado by remember { mutableStateOf("Activa") }
 
     // para los dropdowns
@@ -166,13 +165,39 @@ fun ReservaFormScreen(
                 ) {
                     // selector de cliente
                     Column {
-                        Text(
-                            text = "Cliente *",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.SemiBold,
-                            color = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.padding(bottom = 8.dp)
-                        )
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "Cliente *",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.SemiBold,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+
+                            // 🆕 BOTÓN DE AÑADIR CLIENTE (separado del dropdown)
+                            TextButton(
+                                onClick = {
+                                    mostrarDialogoNuevoCliente = true
+                                    dropdownClienteExpandido = false // cerramos el dropdown si estaba abierto
+                                },
+                                colors = ButtonDefaults.textButtonColors(
+                                    contentColor = MaterialTheme.colorScheme.primary
+                                )
+                            ) {
+                                Icon(
+                                    Icons.Default.PersonAdd,
+                                    contentDescription = "Añadir cliente",
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text("Añadir nuevo")
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(8.dp))
 
                         Box(modifier = Modifier.fillMaxWidth()) {
                             OutlinedTextField(
@@ -184,19 +209,7 @@ fun ReservaFormScreen(
                                 isError = errores.containsKey("cliente"),
                                 shape = RoundedCornerShape(12.dp),
                                 trailingIcon = {
-                                    Row {
-                                        IconButton(
-                                            onClick = { mostrarDialogoNuevoCliente = true },
-                                            modifier = Modifier.size(48.dp)
-                                        ) {
-                                            Icon(
-                                                Icons.Default.PersonAdd,
-                                                contentDescription = "Añadir cliente",
-                                                tint = MaterialTheme.colorScheme.primary
-                                            )
-                                        }
-                                        ExposedDropdownMenuDefaults.TrailingIcon(expanded = dropdownClienteExpandido)
-                                    }
+                                    ExposedDropdownMenuDefaults.TrailingIcon(expanded = dropdownClienteExpandido)
                                 },
                                 colors = OutlinedTextFieldDefaults.colors(
                                     focusedBorderColor = MaterialTheme.colorScheme.primary,
@@ -238,7 +251,11 @@ fun ReservaFormScreen(
                             Box(
                                 modifier = Modifier
                                     .matchParentSize()
-                                    .clickable { dropdownClienteExpandido = true }
+                                    .clickable {
+                                        if (!dropdownClienteExpandido) {
+                                            dropdownClienteExpandido = true
+                                        }
+                                    }
                             )
                         }
 
@@ -403,7 +420,6 @@ fun ReservaFormScreen(
                                                 Row(
                                                     verticalAlignment = Alignment.CenterVertically
                                                 ) {
-                                                    // indicador de color según estado
                                                     Box(
                                                         modifier = Modifier
                                                             .size(12.dp)
@@ -572,10 +588,7 @@ fun ReservaFormScreen(
                         label = { Text("Nombre *") },
                         modifier = Modifier.fillMaxWidth(),
                         singleLine = true,
-                        shape = RoundedCornerShape(12.dp),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = MaterialTheme.colorScheme.primary
-                        )
+                        shape = RoundedCornerShape(12.dp)
                     )
                     OutlinedTextField(
                         value = nuevoClienteTelefono,
@@ -587,18 +600,12 @@ fun ReservaFormScreen(
                         shape = RoundedCornerShape(12.dp)
                     )
                     if (errorNuevoCliente != null) {
-                        Surface(
-                            color = MaterialTheme.colorScheme.errorContainer,
-                            shape = RoundedCornerShape(8.dp),
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Text(
-                                text = errorNuevoCliente!!,
-                                modifier = Modifier.padding(10.dp),
-                                color = MaterialTheme.colorScheme.error,
-                                style = MaterialTheme.typography.bodySmall
-                            )
-                        }
+                        Text(
+                            text = errorNuevoCliente!!,
+                            color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.bodySmall,
+                            modifier = Modifier.padding(start = 8.dp)
+                        )
                     }
                 }
             },
@@ -609,7 +616,20 @@ fun ReservaFormScreen(
                             errorNuevoCliente = "Todos los campos son obligatorios"
                             return@Button
                         }
+
+                        // Crear cliente temporal para selección inmediata
+                        val tempId = (clientes.maxOfOrNull { it.id } ?: 0) + 1
+                        val clienteTemp = Cliente(
+                            id = tempId,
+                            nombre = nuevoClienteNombre,
+                            telefono = nuevoClienteTelefono
+                        )
+                        clienteSeleccionado = clienteTemp
+
+                        // Guardar en BD
                         viewModel.crearCliente(nuevoClienteNombre, nuevoClienteTelefono)
+
+                        // Cerrar diálogo
                         mostrarDialogoNuevoCliente = false
                         nuevoClienteNombre = ""
                         nuevoClienteTelefono = ""
