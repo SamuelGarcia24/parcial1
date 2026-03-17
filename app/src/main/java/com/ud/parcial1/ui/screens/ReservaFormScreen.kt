@@ -6,7 +6,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
@@ -19,12 +18,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.ud.parcial1.model.data.Cliente
 import com.ud.parcial1.model.data.ReservaWithDetails
 import com.ud.parcial1.ui.ReservaViewModel
+import java.text.SimpleDateFormat
+import java.util.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -37,23 +37,31 @@ fun ReservaFormScreen(
     // observamos los datos
     val clientes by viewModel.clientes.collectAsState()
     val cargando by viewModel.cargando.collectAsState()
+    val reservas by viewModel.reservas.collectAsState()
 
     // estado del formulario
     var clienteSeleccionado by remember { mutableStateOf<Cliente?>(null) }
-    var fecha by remember { mutableStateOf("") }
-    var hora by remember { mutableStateOf("") }
-    var numeroPista by remember { mutableStateOf("1") }
-    var cantidadJugadores by remember { mutableStateOf("4") }
+    var fechaSeleccionada by remember { mutableStateOf("") }
+    var rangoHorasSeleccionado by remember { mutableStateOf("8:00 AM - 10:00 AM") }
+    var pistaSeleccionada by remember { mutableStateOf(1) }
+    var jugadoresSeleccionados by remember { mutableStateOf(2) }
     var estadoSeleccionado by remember { mutableStateOf("Activa") }
 
     // para los dropdowns
     var dropdownClienteExpandido by remember { mutableStateOf(false) }
+    var dropdownRangoHorasExpandido by remember { mutableStateOf(false) }
+    var dropdownPistaExpandido by remember { mutableStateOf(false) }
+    var dropdownJugadoresExpandido by remember { mutableStateOf(false) }
     var dropdownEstadoExpandido by remember { mutableStateOf(false) }
+
+    // para el calendario
+    var mostrarDatePicker by remember { mutableStateOf(false) }
+    val datePickerState = rememberDatePickerState()
 
     // errores de validacion
     var errores by remember { mutableStateOf(mapOf<String, String>()) }
 
-    // mensaje de disponibilidad (regla #1)
+    // mensaje de disponibilidad
     var mensajeDisponibilidad by remember { mutableStateOf<String?>(null) }
 
     // estado para el diálogo de nuevo cliente
@@ -65,16 +73,37 @@ fun ReservaFormScreen(
     // lista de estados disponibles
     val estados = listOf("Activa", "Cancelada", "Finalizada")
 
+    // 🆕 RANGOS DE HORAS (de 2 horas cada uno)
+    val rangosHoras = listOf(
+        "8:00 AM - 10:00 AM",
+        "10:00 AM - 12:00 PM",
+        "12:00 PM - 2:00 PM",
+        "2:00 PM - 4:00 PM",
+        "4:00 PM - 6:00 PM",
+        "6:00 PM - 8:00 PM",
+        "8:00 PM - 10:00 PM"
+    )
+
+    val pistasDisponibles = (1..8).toList()
+    val jugadoresPorPista = (1..4).toList()
+
     // si estamos editando, cargamos los datos
     LaunchedEffect(reservaParaEditar) {
         if (reservaParaEditar != null) {
             clienteSeleccionado = reservaParaEditar.cliente
-            fecha = reservaParaEditar.reserva.fecha
-            hora = reservaParaEditar.reserva.hora
-            numeroPista = reservaParaEditar.reserva.numeroPista.toString()
-            cantidadJugadores = reservaParaEditar.reserva.cantidadJugadores.toString()
+            fechaSeleccionada = reservaParaEditar.reserva.fecha
+            rangoHorasSeleccionado = reservaParaEditar.reserva.hora
+            pistaSeleccionada = reservaParaEditar.reserva.numeroPista
+            jugadoresSeleccionados = reservaParaEditar.reserva.cantidadJugadores
             estadoSeleccionado = reservaParaEditar.estado.descripcion
         }
+    }
+
+    // 🆕 Función para convertir timestamp a fecha string
+    fun timestampToDateString(timestamp: Long): String {
+        val date = Date(timestamp)
+        val format = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
+        return format.format(date)
     }
 
     Scaffold(
@@ -177,11 +206,10 @@ fun ReservaFormScreen(
                                 color = MaterialTheme.colorScheme.primary
                             )
 
-                            // 🆕 BOTÓN DE AÑADIR CLIENTE (separado del dropdown)
                             TextButton(
                                 onClick = {
                                     mostrarDialogoNuevoCliente = true
-                                    dropdownClienteExpandido = false // cerramos el dropdown si estaba abierto
+                                    dropdownClienteExpandido = false
                                 },
                                 colors = ButtonDefaults.textButtonColors(
                                     contentColor = MaterialTheme.colorScheme.primary
@@ -269,7 +297,7 @@ fun ReservaFormScreen(
                         }
                     }
 
-                    // campo fecha
+                    // 🆕 CAMPO FECHA CON CALENDARIO
                     Column {
                         Text(
                             text = "Fecha *",
@@ -277,107 +305,201 @@ fun ReservaFormScreen(
                             fontWeight = FontWeight.Medium,
                             modifier = Modifier.padding(bottom = 4.dp)
                         )
-                        OutlinedTextField(
-                            value = fecha,
-                            onValueChange = {
-                                fecha = it
-                                mensajeDisponibilidad = null
-                            },
-                            placeholder = { Text("DD/MM/AAAA") },
-                            isError = errores.containsKey("fecha"),
+
+                        Row(
                             modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(12.dp),
-                            singleLine = true,
-                            supportingText = {
-                                if (errores.containsKey("fecha")) {
-                                    Text(errores["fecha"]!!)
-                                }
-                            },
-                            colors = OutlinedTextFieldDefaults.colors(
-                                focusedBorderColor = MaterialTheme.colorScheme.primary,
-                                unfocusedBorderColor = MaterialTheme.colorScheme.outline
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            OutlinedTextField(
+                                value = fechaSeleccionada,
+                                onValueChange = {},
+                                readOnly = true,
+                                placeholder = { Text("Seleccione fecha") },
+                                modifier = Modifier.weight(1f),
+                                isError = errores.containsKey("fecha"),
+                                shape = RoundedCornerShape(12.dp),
+                                singleLine = true,
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    focusedBorderColor = MaterialTheme.colorScheme.primary,
+                                    unfocusedBorderColor = MaterialTheme.colorScheme.outline
+                                )
                             )
-                        )
+
+                            Button(
+                                onClick = { mostrarDatePicker = true },
+                                shape = RoundedCornerShape(12.dp),
+                                modifier = Modifier.height(56.dp)
+                            ) {
+                                Text("📅")
+                            }
+                        }
+
+                        if (errores.containsKey("fecha")) {
+                            Text(
+                                text = errores["fecha"]!!,
+                                color = MaterialTheme.colorScheme.error,
+                                style = MaterialTheme.typography.bodySmall,
+                                modifier = Modifier.padding(start = 12.dp, top = 4.dp)
+                            )
+                        }
                     }
 
-                    // campo hora
+                    // 🆕 SELECTOR DE RANGO DE HORAS
                     Column {
                         Text(
-                            text = "Hora *",
+                            text = "Rango de Horas *",
                             style = MaterialTheme.typography.titleSmall,
                             fontWeight = FontWeight.Medium,
                             modifier = Modifier.padding(bottom = 4.dp)
                         )
-                        OutlinedTextField(
-                            value = hora,
-                            onValueChange = {
-                                hora = it
-                                mensajeDisponibilidad = null
-                            },
-                            placeholder = { Text("Ej: 4:00 PM") },
-                            isError = errores.containsKey("hora"),
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(12.dp),
-                            singleLine = true,
-                            supportingText = {
-                                if (errores.containsKey("hora")) {
-                                    Text(errores["hora"]!!)
+
+                        Box(modifier = Modifier.fillMaxWidth()) {
+                            OutlinedTextField(
+                                value = rangoHorasSeleccionado,
+                                onValueChange = {},
+                                readOnly = true,
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(12.dp),
+                                trailingIcon = {
+                                    ExposedDropdownMenuDefaults.TrailingIcon(expanded = dropdownRangoHorasExpandido)
+                                },
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    focusedBorderColor = MaterialTheme.colorScheme.primary,
+                                    unfocusedBorderColor = MaterialTheme.colorScheme.outline
+                                )
+                            )
+
+                            DropdownMenu(
+                                expanded = dropdownRangoHorasExpandido,
+                                onDismissRequest = { dropdownRangoHorasExpandido = false },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .heightIn(max = 300.dp)
+                                    .padding(horizontal = 8.dp)
+                            ) {
+                                rangosHoras.forEach { rango ->
+                                    DropdownMenuItem(
+                                        text = { Text(rango) },
+                                        onClick = {
+                                            rangoHorasSeleccionado = rango
+                                            dropdownRangoHorasExpandido = false
+                                            mensajeDisponibilidad = null
+                                        }
+                                    )
                                 }
                             }
-                        )
+
+                            Box(
+                                modifier = Modifier
+                                    .matchParentSize()
+                                    .clickable { dropdownRangoHorasExpandido = true }
+                            )
+                        }
                     }
 
-                    // campo número de pista
+                    // SELECTOR DE PISTA
                     Column {
                         Text(
-                            text = "Número de Pista *",
+                            text = "Número de Pista * (1-8)",
                             style = MaterialTheme.typography.titleSmall,
                             fontWeight = FontWeight.Medium,
                             modifier = Modifier.padding(bottom = 4.dp)
                         )
-                        OutlinedTextField(
-                            value = numeroPista,
-                            onValueChange = {
-                                numeroPista = it
-                                mensajeDisponibilidad = null
-                            },
-                            placeholder = { Text("1") },
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                            isError = errores.containsKey("pista"),
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(12.dp),
-                            singleLine = true,
-                            supportingText = {
-                                if (errores.containsKey("pista")) {
-                                    Text(errores["pista"]!!)
+
+                        Box(modifier = Modifier.fillMaxWidth()) {
+                            OutlinedTextField(
+                                value = pistaSeleccionada.toString(),
+                                onValueChange = {},
+                                readOnly = true,
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(12.dp),
+                                trailingIcon = {
+                                    ExposedDropdownMenuDefaults.TrailingIcon(expanded = dropdownPistaExpandido)
+                                },
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    focusedBorderColor = MaterialTheme.colorScheme.primary,
+                                    unfocusedBorderColor = MaterialTheme.colorScheme.outline
+                                )
+                            )
+
+                            DropdownMenu(
+                                expanded = dropdownPistaExpandido,
+                                onDismissRequest = { dropdownPistaExpandido = false },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 8.dp)
+                            ) {
+                                pistasDisponibles.forEach { pista ->
+                                    DropdownMenuItem(
+                                        text = { Text("Pista $pista") },
+                                        onClick = {
+                                            pistaSeleccionada = pista
+                                            dropdownPistaExpandido = false
+                                            mensajeDisponibilidad = null
+                                        }
+                                    )
                                 }
                             }
-                        )
+
+                            Box(
+                                modifier = Modifier
+                                    .matchParentSize()
+                                    .clickable { dropdownPistaExpandido = true }
+                            )
+                        }
                     }
 
-                    // campo cantidad de jugadores
+                    // SELECTOR DE JUGADORES
                     Column {
                         Text(
-                            text = "Cantidad de Jugadores *",
+                            text = "Cantidad de Jugadores * (Máx 4)",
                             style = MaterialTheme.typography.titleSmall,
                             fontWeight = FontWeight.Medium,
                             modifier = Modifier.padding(bottom = 4.dp)
                         )
-                        OutlinedTextField(
-                            value = cantidadJugadores,
-                            onValueChange = { cantidadJugadores = it },
-                            placeholder = { Text("4") },
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                            isError = errores.containsKey("jugadores"),
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(12.dp),
-                            singleLine = true,
-                            supportingText = {
-                                if (errores.containsKey("jugadores")) {
-                                    Text(errores["jugadores"]!!)
+
+                        Box(modifier = Modifier.fillMaxWidth()) {
+                            OutlinedTextField(
+                                value = "$jugadoresSeleccionados ${if (jugadoresSeleccionados == 1) "Jugador" else "Jugadores"}",
+                                onValueChange = {},
+                                readOnly = true,
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(12.dp),
+                                trailingIcon = {
+                                    ExposedDropdownMenuDefaults.TrailingIcon(expanded = dropdownJugadoresExpandido)
+                                },
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    focusedBorderColor = MaterialTheme.colorScheme.primary,
+                                    unfocusedBorderColor = MaterialTheme.colorScheme.outline
+                                )
+                            )
+
+                            DropdownMenu(
+                                expanded = dropdownJugadoresExpandido,
+                                onDismissRequest = { dropdownJugadoresExpandido = false },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 8.dp)
+                            ) {
+                                jugadoresPorPista.forEach { cantidad ->
+                                    DropdownMenuItem(
+                                        text = {
+                                            Text("$cantidad ${if (cantidad == 1) "Jugador" else "Jugadores"}")
+                                        },
+                                        onClick = {
+                                            jugadoresSeleccionados = cantidad
+                                            dropdownJugadoresExpandido = false
+                                        }
+                                    )
                                 }
                             }
-                        )
+
+                            Box(
+                                modifier = Modifier
+                                    .matchParentSize()
+                                    .clickable { dropdownJugadoresExpandido = true }
+                            )
+                        }
                     }
 
                     // SELECTOR DE ESTADO (solo visible en edición)
@@ -483,34 +605,37 @@ fun ReservaFormScreen(
                     if (clienteSeleccionado == null) {
                         nuevosErrores["cliente"] = "Debe seleccionar un cliente"
                     }
-                    if (fecha.isBlank()) {
+                    if (fechaSeleccionada.isBlank()) {
                         nuevosErrores["fecha"] = "La fecha es obligatoria"
-                    }
-                    if (hora.isBlank()) {
-                        nuevosErrores["hora"] = "La hora es obligatoria"
-                    }
-                    val pistaNum = numeroPista.toIntOrNull()
-                    if (pistaNum == null || pistaNum <= 0) {
-                        nuevosErrores["pista"] = "Número de pista inválido"
-                    }
-                    val jugadoresNum = cantidadJugadores.toIntOrNull()
-                    if (jugadoresNum == null || jugadoresNum <= 0) {
-                        nuevosErrores["jugadores"] = "Cantidad de jugadores inválida"
                     }
 
                     if (nuevosErrores.isEmpty()) {
+                        // 🆕 VALIDACIÓN DE DISPONIBILIDAD POR RANGO DE HORAS
+                        val pistaOcupada = reservas.any { reserva ->
+                            reserva.reserva.numeroPista == pistaSeleccionada &&
+                                    reserva.reserva.fecha == fechaSeleccionada &&
+                                    reserva.reserva.hora == rangoHorasSeleccionado && // Mismo rango
+                                    reserva.reserva.idEstado == 3 && // Solo activas
+                                    (reservaParaEditar == null || reserva.reserva.id != reservaParaEditar.reserva.id)
+                        }
+
+                        if (pistaOcupada) {
+                            mensajeDisponibilidad = "La pista $pistaSeleccionada ya está reservada para el $fechaSeleccionada en el horario $rangoHorasSeleccionado"
+                            return@Button
+                        }
+
                         if (reservaParaEditar == null) {
-                            // para nueva reserva, verificamos disponibilidad
+                            // crear nueva reserva
                             viewModel.crearReserva(
                                 idCliente = clienteSeleccionado!!.id,
-                                fecha = fecha,
-                                hora = hora,
-                                numeroPista = pistaNum!!,
-                                cantidadJugadores = jugadoresNum!!
+                                fecha = fechaSeleccionada,
+                                hora = rangoHorasSeleccionado,
+                                numeroPista = pistaSeleccionada,
+                                cantidadJugadores = jugadoresSeleccionados
                             )
                             onGuardarCompleto()
                         } else {
-                            // actualizar reserva existente con el nuevo estado
+                            // actualizar reserva existente
                             val idEstado = when (estadoSeleccionado) {
                                 "Activa" -> 3
                                 "Cancelada" -> 1
@@ -521,10 +646,10 @@ fun ReservaFormScreen(
                                 id = reservaParaEditar.reserva.id,
                                 idCliente = clienteSeleccionado!!.id,
                                 idEstado = idEstado,
-                                fecha = fecha,
-                                hora = hora,
-                                numeroPista = pistaNum!!,
-                                cantidadJugadores = jugadoresNum!!
+                                fecha = fechaSeleccionada,
+                                hora = rangoHorasSeleccionado,
+                                numeroPista = pistaSeleccionada,
+                                cantidadJugadores = jugadoresSeleccionados
                             )
                             onGuardarCompleto()
                         }
@@ -562,6 +687,33 @@ fun ReservaFormScreen(
         }
     }
 
+    // 🆕 DatePicker Dialog
+    if (mostrarDatePicker) {
+        DatePickerDialog(
+            onDismissRequest = { mostrarDatePicker = false },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        datePickerState.selectedDateMillis?.let { timestamp ->
+                            fechaSeleccionada = timestampToDateString(timestamp)
+                            mensajeDisponibilidad = null
+                        }
+                        mostrarDatePicker = false
+                    }
+                ) {
+                    Text("OK")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { mostrarDatePicker = false }) {
+                    Text("Cancelar")
+                }
+            }
+        ) {
+            DatePicker(state = datePickerState)
+        }
+    }
+
     // Diálogo para añadir nuevo cliente
     if (mostrarDialogoNuevoCliente) {
         AlertDialog(
@@ -594,7 +746,6 @@ fun ReservaFormScreen(
                         value = nuevoClienteTelefono,
                         onValueChange = { nuevoClienteTelefono = it },
                         label = { Text("Teléfono *") },
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
                         modifier = Modifier.fillMaxWidth(),
                         singleLine = true,
                         shape = RoundedCornerShape(12.dp)
@@ -617,7 +768,6 @@ fun ReservaFormScreen(
                             return@Button
                         }
 
-                        // Crear cliente temporal para selección inmediata
                         val tempId = (clientes.maxOfOrNull { it.id } ?: 0) + 1
                         val clienteTemp = Cliente(
                             id = tempId,
@@ -626,10 +776,8 @@ fun ReservaFormScreen(
                         )
                         clienteSeleccionado = clienteTemp
 
-                        // Guardar en BD
                         viewModel.crearCliente(nuevoClienteNombre, nuevoClienteTelefono)
 
-                        // Cerrar diálogo
                         mostrarDialogoNuevoCliente = false
                         nuevoClienteNombre = ""
                         nuevoClienteTelefono = ""

@@ -24,7 +24,7 @@ fun DetalleReservaScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("detalle de la reserva") },
+                title = { Text("Detalle de la reserva") },
                 navigationIcon = {
                     IconButton(onClick = onVolver) {
                         Icon(Icons.Default.ArrowBack, contentDescription = "volver")
@@ -63,7 +63,7 @@ fun DetalleReservaScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = "reserva #${reserva.reserva.id}",
+                            text = "Reserva #${reserva.reserva.id}",
                             style = MaterialTheme.typography.headlineSmall
                         )
                         BadgeDetalle(estado = reserva.estado.descripcion)
@@ -72,14 +72,14 @@ fun DetalleReservaScreen(
                     Spacer(modifier = Modifier.height(24.dp))
 
                     // informacion del cliente
-                    SeccionInfo(titulo = "informacion del cliente")
+                    SeccionInfo(titulo = "Información del cliente")
 
                     FilaInfo(
-                        label = "nombre",
+                        label = "Nombre",
                         valor = reserva.cliente.nombre
                     )
                     FilaInfo(
-                        label = "telefono",
+                        label = "Telefono",
                         valor = reserva.cliente.telefono
                     )
 
@@ -88,22 +88,22 @@ fun DetalleReservaScreen(
                     Spacer(modifier = Modifier.height(16.dp))
 
                     // informacion de la reserva
-                    SeccionInfo(titulo = "detalles de la reserva")
+                    SeccionInfo(titulo = "Detalles de la reserva")
 
                     FilaInfo(
-                        label = "fecha",
+                        label = "Fecha",
                         valor = reserva.reserva.fecha
                     )
                     FilaInfo(
-                        label = "hora",
+                        label = "Hora",
                         valor = reserva.reserva.hora
                     )
                     FilaInfo(
-                        label = "numero de pista",
+                        label = "Número de pista",
                         valor = reserva.reserva.numeroPista.toString()
                     )
                     FilaInfo(
-                        label = "cantidad de jugadores",
+                        label = "Cantidad de jugadores",
                         valor = reserva.reserva.cantidadJugadores.toString()
                     )
                 }
@@ -124,7 +124,7 @@ fun DetalleReservaScreen(
                         .padding(16.dp)
                 ) {
                     Text(
-                        text = "informacion importante",
+                        text = "Información importante",
                         style = MaterialTheme.typography.titleMedium,
                         color = MaterialTheme.colorScheme.primary
                     )
@@ -132,16 +132,16 @@ fun DetalleReservaScreen(
                     Spacer(modifier = Modifier.height(8.dp))
 
                     Text(
-                        text = "• la reserva debe cancelarse con 24 horas de anticipacion",
+                        text = "• La reserva debe cancelarse con 24 horas de anticipacion",
                         style = MaterialTheme.typography.bodyMedium
                     )
                     Text(
-                        text = "• el estado actual es: ${reserva.estado.descripcion}",
+                        text = "• El estado actual es: ${reserva.estado.descripcion}",
                         style = MaterialTheme.typography.bodyMedium
                     )
                     if (reserva.estado.descripcion == "Activa") {
                         Text(
-                            text = "• la pista ${reserva.reserva.numeroPista} esta confirmada",
+                            text = "• La pista ${reserva.reserva.numeroPista} esta confirmada",
                             style = MaterialTheme.typography.bodyMedium
                         )
                     }
