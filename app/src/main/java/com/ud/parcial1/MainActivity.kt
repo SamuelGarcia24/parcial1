@@ -5,11 +5,10 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.runtime.*
 import androidx.compose.ui.platform.LocalContext
-import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.ud.parcial1.model.data.AppDatabase
 import com.ud.parcial1.model.data.ReservaWithDetails
-import com.ud.parcial1.ui.ReservaScreen
+import com.ud.parcial1.ui.screens.ReservaScreen
 import com.ud.parcial1.ui.ReservaViewModel
 import com.ud.parcial1.ui.screens.DetalleReservaScreen
 import com.ud.parcial1.ui.screens.ReservaFormScreen
