@@ -11,9 +11,11 @@ import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import com.ud.parcial1.model.data.Reserva
 import com.ud.parcial1.model.data.ReservaWithDetails
 import com.ud.parcial1.ui.ReservaViewModel
 
@@ -27,6 +29,34 @@ fun ReservaScreen(
 ) {
     val reservas by viewModel.reservas.collectAsState()
     var searchText by remember { mutableStateOf("") }
+    
+    // Estados para el diálogo de confirmación
+    var showDeleteDialog by remember { mutableStateOf(false) }
+    var reservaParaEliminar by remember { mutableStateOf<Reserva?>(null) }
+
+    if (showDeleteDialog && reservaParaEliminar != null) {
+        AlertDialog(
+            onDismissRequest = { showDeleteDialog = false },
+            title = { Text("Confirmar eliminación") },
+            text = { Text("¿Estás seguro de que deseas eliminar esta reserva? Esta acción no se puede deshacer.") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        reservaParaEliminar?.let { viewModel.eliminarReserva(it) }
+                        showDeleteDialog = false
+                    },
+                    colors = ButtonDefaults.textButtonColors(contentColor = Color.Red)
+                ) {
+                    Text("Eliminar")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteDialog = false }) {
+                    Text("Cancelar")
+                }
+            }
+        )
+    }
 
     Scaffold(
         topBar = {
@@ -34,7 +64,16 @@ fun ReservaScreen(
         },
         floatingActionButton = {
             FloatingActionButton(onClick = onNuevaReserva) {
-                Icon(Icons.Default.Add, contentDescription = "Nueva Reserva")
+                Row(
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        Icons.Default.Add,
+                        contentDescription = "Nueva Reserva"
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(text = "Nueva Reserva ")
+                }
             }
         }
     ) { padding ->
@@ -57,7 +96,10 @@ fun ReservaScreen(
                     ReservaItem(
                         item = item,
                         onVerDetalle = { onVerDetalle(item) },
-                        onDelete = { viewModel.eliminarReserva(item.reserva) },
+                        onDelete = { 
+                            reservaParaEliminar = item.reserva
+                            showDeleteDialog = true 
+                        },
                         onEdit = { onEditarReserva(item) }
                     )
                 }
