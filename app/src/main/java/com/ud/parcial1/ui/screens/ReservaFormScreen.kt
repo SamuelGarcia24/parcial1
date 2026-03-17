@@ -101,9 +101,11 @@ fun ReservaFormScreen(
 
     // 🆕 Función para convertir timestamp a fecha string
     fun timestampToDateString(timestamp: Long): String {
-        val date = Date(timestamp)
+        val calendar = Calendar.getInstance(TimeZone.getTimeZone("UTC"))
+        calendar.timeInMillis = timestamp
         val format = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
-        return format.format(date)
+        format.timeZone = TimeZone.getTimeZone("UTC")
+        return format.format(calendar.time)
     }
 
     Scaffold(
