@@ -14,10 +14,13 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.ud.parcial1.model.data.Reserva
 import com.ud.parcial1.model.data.ReservaWithDetails
 import com.ud.parcial1.ui.ReservaViewModel
+import java.text.SimpleDateFormat
+import java.util.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -29,7 +32,17 @@ fun ReservaScreen(
 ) {
     val reservas by viewModel.reservas.collectAsState()
     var searchText by remember { mutableStateOf("") }
-    
+
+    // --- LÓGICA PARA EL RESUMEN ---
+    val hoy = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(Date())
+    val reservasHoy = reservas.filter { it.reserva.fecha == hoy }.size
+    // Se consideran ocupadas si el estado es "Activa"
+    val canchasOcupadas = reservas.filter { it.reserva.idEstado == 3 && it.reserva.fecha == hoy }
+        .map { it.reserva.numeroPista }
+        .distinct().size
+    val Activas = reservas.count { it.reserva.idEstado == 3 }
+    val Finalizadas = reservas.count { it.reserva.idEstado == 2 }
+
     // Estados para el diálogo de confirmación
     var showDeleteDialog by remember { mutableStateOf(false) }
     var reservaParaEliminar by remember { mutableStateOf<Reserva?>(null) }
@@ -63,21 +76,26 @@ fun ReservaScreen(
             TopAppBar(title = { Text("Reservas Bowling") })
         },
         floatingActionButton = {
-            FloatingActionButton(onClick = onNuevaReserva) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        Icons.Default.Add,
-                        contentDescription = "Nueva Reserva"
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(text = "Nueva Reserva ")
-                }
-            }
+            ExtendedFloatingActionButton(
+                onClick = onNuevaReserva,
+                icon = { Icon(Icons.Default.Add, "Nueva Reserva") },
+                text = { Text("Nueva Reserva") }
+            )
         }
     ) { padding ->
-        Column(modifier = Modifier.padding(padding)) {
+        Column(modifier = Modifier.padding(padding).fillMaxSize()) {
+
+            // --- SECCIÓN RESUMEN (4 Cards como el Mockup) ---
+            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    ResumenCard("Reservas Hoy", reservasHoy.toString(), Color(0xFF2196F3), Modifier.weight(1f))
+                    ResumenCard("Canchas Ocupadas", canchasOcupadas.toString(), Color(0xFFFF9800), Modifier.weight(1f))
+                }
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    ResumenCard("Reservas Activas", Activas.toString(), Color(0xFF4CAF50), Modifier.weight(1f))
+                    ResumenCard("Finalizadas", Finalizadas.toString(), Color(0xFF757575), Modifier.weight(1f))
+                }
+            }
             // Barra de búsqueda (Regla 2)
             OutlinedTextField(
                 value = searchText,
@@ -87,18 +105,30 @@ fun ReservaScreen(
                 },
                 modifier = Modifier.fillMaxWidth().padding(16.dp),
                 placeholder = { Text("Buscar por nombre de cliente...") },
-                leadingIcon = { Icon(Icons.Default.Search, null) }
+                leadingIcon = { Icon(Icons.Default.Search, null) },
+                shape = MaterialTheme.shapes.medium
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Text(
+                text = "Listado de Reservas",
+                style = MaterialTheme.typography.titleLarge,
+                modifier = Modifier.padding(16.dp)
             )
 
             // Listado de Reservas (Regla 3 y 4)
-            LazyColumn {
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(bottom = 80.dp)
+            ) {
                 items(reservas) { item ->
                     ReservaItem(
                         item = item,
                         onVerDetalle = { onVerDetalle(item) },
-                        onDelete = { 
+                        onDelete = {
                             reservaParaEliminar = item.reserva
-                            showDeleteDialog = true 
+                            showDeleteDialog = true
                         },
                         onEdit = { onEditarReserva(item) }
                     )
@@ -108,6 +138,22 @@ fun ReservaScreen(
     }
 }
 
+@Composable
+fun ResumenCard(titulo: String, valor: String, containerColor: Color, modifier: Modifier) {
+    Card(
+        modifier = modifier,
+        colors = CardDefaults.cardColors(containerColor = containerColor),
+        elevation = CardDefaults.cardElevation(2.dp)
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(text = valor, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
+            Text(text = titulo, style = MaterialTheme.typography.labelMedium)
+        }
+    }
+}
 @Composable
 fun ReservaItem(
     item: ReservaWithDetails,
@@ -180,3 +226,5 @@ fun StatusBadge(status: String) {
         )
     }
 }
+
+
